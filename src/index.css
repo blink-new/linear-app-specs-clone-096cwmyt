@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    
+    /* Linear-inspired colors */
+    --linear-primary: 238 75% 65%;
+    --linear-accent: 195 100% 50%;
+    --linear-bg: 220 13% 9%;
+    --linear-surface: 220 13% 11%;
+    --linear-border: 220 13% 18%;
+    --linear-text: 210 40% 98%;
+    --linear-text-muted: 215 20% 65%;
+  }
+
+  .dark {
+    --background: 220 13% 9%;
+    --foreground: 210 40% 98%;
+    --card: 220 13% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 220 13% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 238 75% 65%;
+    --primary-foreground: 220 13% 9%;
+    --secondary: 220 13% 15%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 220 13% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 220 13% 15%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 13% 18%;
+    --input: 220 13% 15%;
+    --ring: 238 75% 65%;
+    --sidebar-background: 220 13% 9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 238 75% 65%;
+    --sidebar-primary-foreground: 220 13% 9%;
+    --sidebar-accent: 220 13% 15%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 220 13% 18%;
+    --sidebar-ring: 238 75% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground font-sans;
+
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  
+  html {
+    @apply dark;
+  }
+}
+
+@layer components {
+  .linear-priority-urgent {
+    @apply bg-red-500;
+  }
+  
+  .linear-priority-high {
+    @apply bg-orange-500;
+  }
+  
+  .linear-priority-medium {
+    @apply bg-yellow-500;
+  }
+  
+  .linear-priority-low {
+    @apply bg-green-500;
+  }
+  
+  .linear-status-draft {
+    @apply bg-gray-500;
+  }
+  
+  .linear-status-review {
+    @apply bg-blue-500;
+  }
+  
+  .linear-status-approved {
+    @apply bg-green-500;
+  }
+  
+  .linear-status-implemented {
+    @apply bg-purple-500;
+  }
+
+  /* Markdown Content Styling */
+  .markdown-content {
+    @apply text-foreground;
+  }
+
+  .markdown-content h1 {
+    @apply text-2xl font-bold mb-4 text-foreground border-b border-border pb-2;
+  }
+
+  .markdown-content h2 {
+    @apply text-xl font-semibold mb-3 text-foreground mt-6;
+  }
+
+  .markdown-content h3 {
+    @apply text-lg font-medium mb-2 text-foreground mt-4;
+  }
+
+  .markdown-content h4 {
+    @apply text-base font-medium mb-2 text-foreground mt-3;
+  }
+
+  .markdown-content p {
+    @apply mb-4 text-foreground leading-relaxed;
+  }
+
+  .markdown-content ul, .markdown-content ol {
+    @apply mb-4 ml-6;
+  }
+
+  .markdown-content li {
+    @apply mb-1 text-foreground;
+  }
+
+  .markdown-content blockquote {
+    @apply border-l-4 border-primary pl-4 italic text-muted-foreground mb-4;
+  }
+
+  .markdown-content code {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground;
+  }
+
+  .markdown-content pre {
+    @apply bg-muted p-4 rounded-lg overflow-x-auto mb-4;
+  }
+
+  .markdown-content pre code {
+    @apply bg-transparent p-0 text-sm;
+  }
+
+  .markdown-content table {
+    @apply w-full border-collapse border border-border mb-4;
+  }
+
+  .markdown-content th, .markdown-content td {
+    @apply border border-border px-3 py-2 text-left;
+  }
+
+  .markdown-content th {
+    @apply bg-muted font-medium;
+  }
+
+  .markdown-content a {
+    @apply text-primary hover:underline;
+  }
+
+  .markdown-content hr {
+    @apply border-border my-6;
+  }
+}
