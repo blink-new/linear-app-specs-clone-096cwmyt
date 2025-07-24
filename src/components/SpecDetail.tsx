@@ -28,7 +28,13 @@ import {
   GitCommit,
   FileText,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Lock,
+  Unlock,
+  Settings,
+  Code,
+  CheckSquare,
+  AlertTriangle
 } from 'lucide-react'
 import {
   DndContext,
@@ -61,6 +67,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { CommentSystem } from './CommentSystem'
 
 interface SpecDetailProps {
@@ -117,6 +124,7 @@ interface Spec {
   title: string
   priority: 'urgent' | 'high' | 'medium' | 'low'
   status: 'draft' | 'review' | 'approved' | 'implemented'
+  stage: 'requirements' | 'technical-design' | 'implementation-tasks'
   assignee: {
     name: string
     avatar: string
@@ -128,10 +136,14 @@ interface Spec {
   comments: number
   attachments: number
   description: string
+  technicalDesign: string
+  implementationTasks: string
   userStories: UserStory[]
   approvers: Approver[]
   versions: SpecVersion[]
   currentVersion: string
+  requirementsLocked: boolean
+  lockReason?: string
 }
 
 // Mock spec data with enhanced features
@@ -140,6 +152,7 @@ const mockSpec: Spec = {
   title: 'User Authentication System Specification',
   priority: 'urgent',
   status: 'review',
+  stage: 'requirements',
   assignee: { name: 'Alice Johnson', avatar: '', initials: 'AJ' },
   cycle: 'Q1 2024',
   createdAt: '2024-01-15',
@@ -147,7 +160,10 @@ const mockSpec: Spec = {
   comments: 5,
   attachments: 2,
   description: 'Comprehensive specification for implementing a secure user authentication system with multi-factor authentication support.',
+  technicalDesign: '',
+  implementationTasks: '',
   currentVersion: 'v1.2',
+  requirementsLocked: false,
   approvers: [
     {
       id: '1',
@@ -292,7 +308,7 @@ const mockSpec: Spec = {
           estimatedPoints: 5,
           assignee: { name: 'Bob Smith', avatar: '', initials: 'BS' },
           acceptanceCriteria: [
-            'User can enter email and password on login form',
+            'User can enter email and password on registration form',
             'System validates credentials against stored user data',
             'Successful login redirects user to dashboard',
             'Failed login shows appropriate error message'
@@ -377,6 +393,18 @@ const approverStatusColors = {
   pending: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
   approved: 'bg-green-500/10 text-green-400 border-green-500/20',
   rejected: 'bg-red-500/10 text-red-400 border-red-500/20'
+}
+
+const stageColors = {
+  'requirements': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  'technical-design': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  'implementation-tasks': 'bg-green-500/10 text-green-400 border-green-500/20'
+}
+
+const stageIcons = {
+  'requirements': FileText,
+  'technical-design': Settings,
+  'implementation-tasks': CheckSquare
 }
 
 // Sortable User Story Component (Simplified)
@@ -717,6 +745,7 @@ export function SpecDetail({ specId, onBack }: SpecDetailProps) {
   const [showVersionComparison, setShowVersionComparison] = useState(false)
   const [newVersionDescription, setNewVersionDescription] = useState('')
   const [showCreateVersion, setShowCreateVersion] = useState(false)
+  const [activeStageTab, setActiveStageTab] = useState<string>(spec.stage)
   const contentRef = React.useRef<HTMLDivElement>(null)
 
   const sensors = useSensors(
@@ -730,6 +759,32 @@ export function SpecDetail({ specId, onBack }: SpecDetailProps) {
     setSpec(prev => ({
       ...prev,
       status: newStatus as Spec['status'],
+      updatedAt: 'just now'
+    }))
+  }
+
+  const handleStageChange = (newStage: string) => {
+    const stage = newStage as Spec['stage']
+    
+    // If moving to technical-design or implementation-tasks, lock requirements
+    const shouldLockRequirements = stage === 'technical-design' || stage === 'implementation-tasks'
+    
+    setSpec(prev => ({
+      ...prev,
+      stage,
+      requirementsLocked: shouldLockRequirements,
+      lockReason: shouldLockRequirements ? `Requirements locked because spec moved to ${stage.replace('-', ' ')} stage` : undefined,
+      updatedAt: 'just now'
+    }))
+    
+    setActiveStageTab(stage)
+  }
+
+  const handleUnlockRequirements = () => {
+    setSpec(prev => ({
+      ...prev,
+      requirementsLocked: false,
+      lockReason: undefined,
       updatedAt: 'just now'
     }))
   }
@@ -868,6 +923,13 @@ export function SpecDetail({ specId, onBack }: SpecDetailProps) {
                   <GitCommit className="w-3 h-3" />
                   {spec.currentVersion}
                 </span>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  {React.createElement(stageIcons[spec.stage], { className: 'w-3 h-3' })}
+                  <Badge variant="outline" className={`text-xs ${stageColors[spec.stage]}`}>
+                    {spec.stage.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </Badge>
+                </div>
               </div>
             </div>
           </div>
@@ -973,9 +1035,45 @@ export function SpecDetail({ specId, onBack }: SpecDetailProps) {
         </div>
       </div>
 
-      {/* Metadata Bar with Approvals */}
+      {/* Metadata Bar with Stage Selector */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50">
         <div className="flex items-center gap-6">
+          {/* Stage Selector */}
+          <div className="flex items-center gap-2">
+            {React.createElement(stageIcons[spec.stage], { className: 'w-4 h-4 text-muted-foreground' })}
+            <Select value={spec.stage} onValueChange={handleStageChange}>
+              <SelectTrigger className="w-auto border-none bg-transparent p-0 h-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="requirements">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    <Badge variant="outline" className={stageColors.requirements}>
+                      Requirements
+                    </Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="technical-design">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    <Badge variant="outline" className={stageColors['technical-design']}>
+                      Technical Design
+                    </Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="implementation-tasks">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4" />
+                    <Badge variant="outline" className={stageColors['implementation-tasks']}>
+                      Implementation Tasks
+                    </Badge>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Status */}
           <div className="flex items-center gap-2">
             <Tag className="w-4 h-4 text-muted-foreground" />
@@ -1067,148 +1165,232 @@ export function SpecDetail({ specId, onBack }: SpecDetailProps) {
         {/* Main Content */}
         <div className="flex-1 overflow-auto p-6" ref={contentRef}>
           <div className="max-w-4xl space-y-8">
-            {/* Description */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Description</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsEditingDescription(!isEditingDescription)}
-                >
-                  {isEditingDescription ? <Eye className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
-                  {isEditingDescription ? 'Preview' : 'Edit'}
-                </Button>
-              </div>
-              
-              {isEditingDescription ? (
-                <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={handleDescriptionCancel}>
-                      Cancel
-                    </Button>
-                    <Button size="sm" onClick={handleDescriptionSave}>
-                      Save Changes
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    className="min-h-[100px] resize-none"
-                    placeholder="Enter specification description..."
-                  />
-                </div>
-              ) : (
-                <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                  <p className="text-foreground">{spec.description}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Approvals Section */}
-            <div>
-              <h2 className="text-lg font-semibold mb-4">Approvals ({approvedCount}/{totalApprovers})</h2>
-              <div className="space-y-3">
-                {spec.approvers.map((approver) => (
-                  <div key={approver.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback>{approver.initials}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{approver.name}</span>
-                          <Badge variant="outline" className={`text-xs ${approverStatusColors[approver.status]}`}>
-                            {approver.status === 'pending' ? 'Pending' : 
-                             approver.status === 'approved' ? 'Approved' : 'Rejected'}
-                          </Badge>
-                        </div>
-                        {approver.approvedAt && (
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(approver.approvedAt).toLocaleDateString()} at {new Date(approver.approvedAt).toLocaleTimeString()}
-                          </p>
-                        )}
-                        {approver.comments && (
-                          <p className="text-sm text-muted-foreground mt-1">{approver.comments}</p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {approver.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleApproverStatusChange(approver.id, 'rejected', 'Needs revision')}
-                        >
-                          <X className="w-4 h-4 mr-1" />
-                          Reject
-                        </Button>
-                        <Button 
-                          size="sm"
-                          onClick={() => handleApproverStatusChange(approver.id, 'approved', 'Approved for implementation')}
-                        >
-                          <Check className="w-4 h-4 mr-1" />
-                          Approve
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* User Stories */}
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">User Stories ({spec.userStories.length})</h2>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center border border-border rounded-lg p-1">
-                    <Button
-                      variant={isCompactView ? "ghost" : "secondary"}
-                      size="sm"
-                      onClick={() => setIsCompactView(false)}
-                      className="h-7 px-2"
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant={isCompactView ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setIsCompactView(true)}
-                      className="h-7 px-2"
-                    >
-                      <List className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <Button size="sm">
-                    <Target className="w-4 h-4 mr-2" />
-                    Add User Story
+            {/* Requirements Lock Warning */}
+            {spec.requirementsLocked && (
+              <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-yellow-400 mb-1">Requirements Locked</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {spec.lockReason}
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    <strong>What happens when requirements change during implementation?</strong><br />
+                    When requirements need to be modified during technical design or implementation phases, 
+                    you can unlock them temporarily. However, this will trigger a new approval cycle and 
+                    may require updating technical designs and implementation tasks to maintain consistency.
+                  </p>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={handleUnlockRequirements}
+                    className="border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/10"
+                  >
+                    <Unlock className="w-4 h-4 mr-2" />
+                    Unlock Requirements
                   </Button>
                 </div>
               </div>
-              
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={userStories.map(story => story.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className={isCompactView ? "space-y-2" : "space-y-4"}>
-                    {userStories.map((story) => (
-                      <SortableUserStory
-                        key={story.id}
-                        story={story}
-                        isCompact={isCompactView}
+            )}
+
+            {/* Stage Tabs */}
+            <Tabs value={activeStageTab} onValueChange={setActiveStageTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="requirements" className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Requirements
+                  {spec.requirementsLocked && <Lock className="w-3 h-3" />}
+                </TabsTrigger>
+                <TabsTrigger value="technical-design" className="flex items-center gap-2">
+                  <Settings className="w-4 h-4" />
+                  Technical Design
+                </TabsTrigger>
+                <TabsTrigger value="implementation-tasks" className="flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4" />
+                  Implementation Tasks
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Requirements Tab */}
+              <TabsContent value="requirements" className="space-y-8">
+                {/* Description */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold">Description</h2>
+                    {!spec.requirementsLocked && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsEditingDescription(!isEditingDescription)}
+                      >
+                        {isEditingDescription ? <Eye className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+                        {isEditingDescription ? 'Preview' : 'Edit'}
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {isEditingDescription ? (
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={handleDescriptionCancel}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={handleDescriptionSave}>
+                          Save Changes
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        className="min-h-[100px] resize-none"
+                        placeholder="Enter specification description..."
                       />
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                      <p className="text-foreground">{spec.description}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Approvals Section */}
+                <div>
+                  <h2 className="text-lg font-semibold mb-4">Approvals ({approvedCount}/{totalApprovers})</h2>
+                  <div className="space-y-3">
+                    {spec.approvers.map((approver) => (
+                      <div key={approver.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback>{approver.initials}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{approver.name}</span>
+                              <Badge variant="outline" className={`text-xs ${approverStatusColors[approver.status]}`}>
+                                {approver.status === 'pending' ? 'Pending' : 
+                                 approver.status === 'approved' ? 'Approved' : 'Rejected'}
+                              </Badge>
+                            </div>
+                            {approver.approvedAt && (
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(approver.approvedAt).toLocaleDateString()} at {new Date(approver.approvedAt).toLocaleTimeString()}
+                              </p>
+                            )}
+                            {approver.comments && (
+                              <p className="text-sm text-muted-foreground mt-1">{approver.comments}</p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {approver.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleApproverStatusChange(approver.id, 'rejected', 'Needs revision')}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => handleApproverStatusChange(approver.id, 'approved', 'Approved for implementation')}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
-                </SortableContext>
-              </DndContext>
-            </div>
+                </div>
+
+                {/* User Stories */}
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold">User Stories ({spec.userStories.length})</h2>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center border border-border rounded-lg p-1">
+                        <Button
+                          variant={isCompactView ? "ghost" : "secondary"}
+                          size="sm"
+                          onClick={() => setIsCompactView(false)}
+                          className="h-7 px-2"
+                        >
+                          <LayoutGrid className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant={isCompactView ? "secondary" : "ghost"}
+                          size="sm"
+                          onClick={() => setIsCompactView(true)}
+                          className="h-7 px-2"
+                        >
+                          <List className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {!spec.requirementsLocked && (
+                        <Button size="sm">
+                          <Target className="w-4 h-4 mr-2" />
+                          Add User Story
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={userStories.map(story => story.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className={isCompactView ? "space-y-2" : "space-y-4"}>
+                        {userStories.map((story) => (
+                          <SortableUserStory
+                            key={story.id}
+                            story={story}
+                            isCompact={isCompactView}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                </div>
+              </TabsContent>
+
+              {/* Technical Design Tab */}
+              <TabsContent value="technical-design" className="space-y-8">
+                <div className="text-center py-12">
+                  <Settings className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Technical Design</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Technical design documentation will be added here.
+                  </p>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Technical Design
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Implementation Tasks Tab */}
+              <TabsContent value="implementation-tasks" className="space-y-8">
+                <div className="text-center py-12">
+                  <CheckSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Implementation Tasks</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Implementation tasks and development breakdown will be added here.
+                  </p>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Implementation Tasks
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
 
